@@ -26,7 +26,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN }));
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_ojihndfgbkjn4ewt";
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -41,6 +41,8 @@ const authenticateToken = (req, res, next) => {
     return res.status(403).json({ message: "Ungültiger oder abgelaufener Token" });
   }
 };
+
+// --- AUTH ROUTES ---
 
 app.post("/api/auth/register", async (req, res) => {
   try {
@@ -132,6 +134,8 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+// --- GROUP ROUTES ---
+
 app.get("/api/groups", authenticateToken, async (req, res) => {
   try {
     const memberships = await prisma.groupMember.findMany({
@@ -194,6 +198,29 @@ app.get("/api/groups/:groupId", authenticateToken, async (req, res) => {
     res.json(group);
   } catch (error) {
     res.status(500).json({ message: `Fehler beim Laden der Gruppe: ${error.message}` });
+  }
+});
+
+// --- DEBT ROUTES ---
+
+app.get("/api/groups/:groupId/debts", authenticateToken, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const group = await prisma.group.findUnique({ where: { id: groupId }, include: { members: true } });
+    if (!group) return res.status(404).json({ message: "Gruppe nicht gefunden" });
+
+    const isMember = group.members.some((m) => m.userId === req.user.id);
+    if (!isMember) return res.status(403).json({ message: "Kein Zugriff auf diese Gruppe" });
+
+    const debts = await prisma.debt.findMany({
+      where: { groupId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ debts });
+  } catch (error) {
+    console.error('Error fetching debts list:', error);
+    res.status(500).json({ message: `Fehler beim Laden der Schulden: ${error.message}` });
   }
 });
 
@@ -327,7 +354,6 @@ app.delete("/api/groups/:groupId/leave", authenticateToken, async (req, res) => 
   }
 });
 
-// Serve frontend in production when built into ../frontend/dist
 if (process.env.NODE_ENV === 'production') {
   const frontendDist = path.resolve(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist));
@@ -339,25 +365,4 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   console.log(`Backend läuft auf http://${HOST}:${PORT}`);
-});
-
-app.get("/api/groups/:groupId/debts", authenticateToken, async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const group = await prisma.group.findUnique({ where: { id: groupId }, include: { members: true } });
-    if (!group) return res.status(404).json({ message: "Gruppe nicht gefunden" });
-
-    const isMember = group.members.some((m) => m.userId === req.user.id);
-    if (!isMember) return res.status(403).json({ message: "Kein Zugriff auf diese Gruppe" });
-
-    const debts = await prisma.debt.findMany({
-      where: { groupId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    res.json({ debts });
-  } catch (error) {
-    console.error('Error fetching debts list:', error);
-    res.status(500).json({ message: `Fehler beim Laden der Schulden: ${error.message}` });
-  }
 });
