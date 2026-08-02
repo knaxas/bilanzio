@@ -87,17 +87,30 @@ export default function Home({ user, token, onLogout }) {
         body: JSON.stringify({ name: newGroupName }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Gruppe konnte nicht erstellt werden");
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        data = { message: text || "Ungültige Server-Antwort" };
       }
 
+      if (!response.ok) {
+        console.error("Gruppe erstellen fehlgeschlagen:", response.status, data);
+        throw new Error(data.message || `Gruppe konnte nicht erstellt werden (${response.status})`);
+      }
+
+      console.log("Gruppe erstellt:", data);
       setNewGroupName("");
       setIsModalOpen(false);
       setGroups((prev) => [...prev, data.group]);
       setFilterRole("all");
-      await fetchGroups();
+
+      if (data.group?.id) {
+        navigate(`/group/${data.group.id}`);
+      } else {
+        await fetchGroups();
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -165,6 +178,11 @@ export default function Home({ user, token, onLogout }) {
       </nav>
 
       <main style={styles.container}>
+        {error && (
+          <div style={styles.pageErrorBanner}>
+            {error}
+          </div>
+        )}
         <div style={styles.welcomeCard}>
           <div style={{ flex: "1 1 280px" }}>
             <h2 style={styles.welcomeTitle}>
@@ -703,6 +721,15 @@ const styles = {
     fontSize: "3rem",
     filter: "drop-shadow(0 6px 15px rgba(0,0,0,0.6))",
     marginBottom: "0.5rem",
+  },
+  pageErrorBanner: {
+    marginBottom: "1rem",
+    padding: "1rem 1.2rem",
+    borderRadius: "18px",
+    backgroundColor: "rgba(239, 68, 68, 0.16)",
+    border: "1px solid rgba(239, 68, 68, 0.35)",
+    color: "#fcd7d7",
+    fontWeight: "700",
   },
   primaryButton: {
     padding: "0.75rem 1.4rem",
