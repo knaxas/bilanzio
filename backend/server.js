@@ -18,16 +18,19 @@ const __dirname = path.dirname(__filename);
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.DATABASE_URL?.includes("localhost") ? false : { rejectUnauthorized: false },
 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
-app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN }));
+app.use(cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true
+}));
+
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_8674u5r7FGH53z4";
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -42,8 +45,6 @@ const authenticateToken = (req, res, next) => {
     return res.status(403).json({ message: "Ungültiger oder abgelaufener Token" });
   }
 };
-
-// --- AUTH ROUTES ---
 
 app.post("/api/auth/register", async (req, res) => {
   try {
@@ -135,8 +136,6 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// --- GROUP ROUTES ---
-
 app.get("/api/groups", authenticateToken, async (req, res) => {
   try {
     const memberships = await prisma.groupMember.findMany({
@@ -201,8 +200,6 @@ app.get("/api/groups/:groupId", authenticateToken, async (req, res) => {
     res.status(500).json({ message: `Fehler beim Laden der Gruppe: ${error.message}` });
   }
 });
-
-// --- DEBT ROUTES ---
 
 app.get("/api/groups/:groupId/debts", authenticateToken, async (req, res) => {
   try {
@@ -355,7 +352,6 @@ app.delete("/api/groups/:groupId/leave", authenticateToken, async (req, res) => 
   }
 });
 
-// --- FRONTEND SERVICING (WICHTIG: IMMER GANZ NACH UNTEN VOR APP.LISTEN!) ---
 if (process.env.NODE_ENV === 'production') {
   const frontendDist = path.resolve(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist));

@@ -14,13 +14,15 @@ export default function Home({ user, token, onLogout }) {
 
   const navigate = useNavigate();
 
-  const fetchGroups = async () => {
-    try {
-      const response = await fetch(buildApiUrl("/api/groups"), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+const fetchGroups = async () => {
+  try {
+    const url = buildApiUrl("/api/groups");
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
       const data = await response.json();
 
@@ -46,7 +48,6 @@ export default function Home({ user, token, onLogout }) {
             const detailData = await detailResponse.json();
             return { ...group, ...detailData };
           } catch (err) {
-            console.error(`Fehler beim Laden von Gruppe ${group.id}:`, err);
             return group;
           }
         })

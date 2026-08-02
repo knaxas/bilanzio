@@ -23,12 +23,18 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // WICHTIG: API-Anfragen NIEMALS cachen, immer direkt ans Backend leiten!
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request).then((resp) => {
       return caches.open(CACHE_NAME).then((cache) => {
-          try { cache.put(event.request, resp.clone()); } catch (e) { }
-          return resp;
-        });
+        try { cache.put(event.request, resp.clone()); } catch (e) { }
+        return resp;
+      });
     }).catch(() => caches.match('/index.html')))
   );
 });
