@@ -55,6 +55,7 @@ export default function Home({ user, token, onLogout }) {
       setGroups(enrichedGroups);
     } catch (err) {
       console.error("Fehler beim Abrufen der Gruppen:", err);
+      setError(err.message || "Gruppen konnten nicht geladen werden.");
     }
   };
 
@@ -94,7 +95,9 @@ export default function Home({ user, token, onLogout }) {
 
       setNewGroupName("");
       setIsModalOpen(false);
-      fetchGroups();
+      setGroups((prev) => [...prev, data.group]);
+      setFilterRole("all");
+      await fetchGroups();
     } catch (err) {
       setError(err.message);
     } finally {
