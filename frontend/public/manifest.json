@@ -1,18 +1,28 @@
 {
-  "name": "Klimax Schulden",
+  "name": "Bilanzio",
   "short_name": "Schulden",
   "description": "Kleine, elegante App zum Verwalten von Gruppen-Schulden und Ausgaben.",
   "lang": "de-DE",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0d0e12",
   "theme_color": "#0d0e12",
   "categories": ["finance", "productivity"],
   "icons": [
-    { "src": "/icons/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { 
+      "src": "/icons/logo-192.png", 
+      "sizes": "192x192", 
+      "type": "image/png", 
+      "purpose": "any maskable" 
+    },
+    { 
+      "src": "/icons/logo-512.png", 
+      "sizes": "512x512", 
+      "type": "image/png", 
+      "purpose": "any maskable" 
+    }
   ],
   "shortcuts": [
     {
