@@ -67,6 +67,7 @@ export default function Home({ user, token, onLogout }) {
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
+    console.log("handleCreateGroup triggered", { newGroupName, token, apiUrl: buildApiUrl("/api/groups") });
     if (!newGroupName.trim()) return;
 
     if (!token || token === "undefined" || token === "null") {
