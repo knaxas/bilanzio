@@ -5,7 +5,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
+import prismaPkg from "@prisma/client";
+const { PrismaClient } = prismaPkg;
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,7 +27,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN }));
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_ojihndfgbkjn4ewt";
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -354,6 +355,7 @@ app.delete("/api/groups/:groupId/leave", authenticateToken, async (req, res) => 
   }
 });
 
+// --- FRONTEND SERVICING (WICHTIG: IMMER GANZ NACH UNTEN VOR APP.LISTEN!) ---
 if (process.env.NODE_ENV === 'production') {
   const frontendDist = path.resolve(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist));
