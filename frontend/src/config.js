@@ -1,11 +1,8 @@
-const DEFAULT_PORT = 5000;
 function getDefaultApiBase() {
   try {
-    const proto = window.location.protocol || "http:";
-    const host = window.location.hostname || "localhost";
-    return `${proto}//${host}:${DEFAULT_PORT}`;
+    return window.location.origin;
   } catch (e) {
-    return `http://localhost:${DEFAULT_PORT}`;
+    return "http://localhost";
   }
 }
 
