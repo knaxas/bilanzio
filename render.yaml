@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: schulden-app
+    env: node
+    branch: main
+    plan: free
+    buildCommand: |
+      npm install --prefix backend
+      npm install --prefix frontend
+      npm --prefix frontend run build
+    startCommand: npm --prefix backend start
+    envVars:
+      - key: DATABASE_URL
+        value: "postgresql://postgres.dwymfkhflqhlnkqgxydr:91Xd3EOfNwj2cz4t@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+      - key: JWT_SECRET
+        value: "ZE1Iw9sRwwUYflgI91Xd3EOfNwj2cz4t"
+      - key: CORS_ORIGIN
+        value: "*"
