@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  password     String
+  displayName  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  memberships  GroupMember[]
+  createdDebts Debt[]        @relation("CreatedDebts")
+}
+
+model Group {
+  id        String        @id @default(uuid())
+  name      String
+  createdAt DateTime      @default(now())
+  members   GroupMember[]
+  debts     Debt[]
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  userId    String
+  groupId   String
+  role      String   @default("MEMBER")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+}
+
+model Debt {
+  id           String   @id @default(uuid())
+  amount       Float
+  description  String
+  debtorName   String
+  creditorName String
+  groupId      String
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdById  String
+  createdBy    User     @relation("CreatedDebts", fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+}

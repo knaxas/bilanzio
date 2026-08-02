@@ -1,0 +1,33 @@
+{
+  "name": "Klimax Schulden",
+  "short_name": "Schulden",
+  "description": "Kleine, elegante App zum Verwalten von Gruppen-Schulden und Ausgaben.",
+  "lang": "de-DE",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0e12",
+  "theme_color": "#0d0e12",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icons/logo-72.png", "sizes": "72x72", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/logo-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/logo-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/logo-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/logo-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/logo-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Neue Schuld eintragen",
+      "short_name": "Neue Schuld",
+      "description": "Schnell eine neue Schuld erfassen",
+      "url": "/",
+      "icons": [{ "src": "/icons/logo-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
