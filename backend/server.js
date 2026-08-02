@@ -27,7 +27,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 app.use(cors({ origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN }));
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_rhdfregs46t";
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -359,7 +359,7 @@ app.delete("/api/groups/:groupId/leave", authenticateToken, async (req, res) => 
 if (process.env.NODE_ENV === 'production') {
   const frontendDist = path.resolve(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist));
-  app.get('/*', (req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
+  app.get(/.*/, (req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
 }
 
 const PORT = Number(process.env.PORT) || 5000;
