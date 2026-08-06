@@ -48,7 +48,7 @@ const authenticateToken = (req, res, next) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { username, password, displayName } = req.body;
+    const { username, password, displayName, iban = "", pb = "" } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ message: "Benutzername und Passwort sind erforderlich." });
@@ -69,6 +69,8 @@ app.post("/api/auth/register", async (req, res) => {
         username,
         password: hashedPassword,
         displayName: displayName || username,
+        iban,
+        pb,
       },
     });
 
@@ -85,6 +87,8 @@ app.post("/api/auth/register", async (req, res) => {
         id: user.id,
         username: user.username,
         displayName: user.displayName,
+        iban: user.iban,
+        pb: user.pb,
       },
     });
   } catch (error) {
@@ -128,11 +132,81 @@ app.post("/api/auth/login", async (req, res) => {
         id: user.id,
         username: user.username,
         displayName: user.displayName,
+        iban: user.iban,
+        pb: user.pb,
       },
     });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ message: `Fehler beim Login: ${error.message}` });
+  }
+});
+
+app.put("/api/users/profile", authenticateToken, async (req, res) => {
+  try {
+    const { displayName, iban, pb } = req.body;
+    
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        ...(displayName !== undefined && { displayName }),
+        ...(iban !== undefined && { iban }),
+        ...(pb !== undefined && { pb }),
+      },
+    });
+
+    res.json({
+      message: "Profil erfolgreich aktualisiert",
+      displayName: updatedUser.displayName,
+      iban: updatedUser.iban,
+      pb: updatedUser.pb,
+    });
+  } catch (error) {
+    console.error("Update Profile Error:", error);
+    res.status(500).json({ message: `Fehler beim Aktualisieren: ${error.message}` });
+  }
+});
+
+app.put("/api/users/password", authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Aktuelles und neues Passwort sind erforderlich." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden." });
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Das aktuelle Passwort ist falsch." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ message: "Passwort erfolgreich geändert" });
+  } catch (error) {
+    console.error("Change Password Error:", error);
+    res.status(500).json({ message: `Fehler beim Ändern des Passworts: ${error.message}` });
+  }
+});
+
+app.delete("/api/users/account", authenticateToken, async (req, res) => {
+  try {
+    await prisma.user.delete({
+      where: { id: req.user.id },
+    });
+
+    res.json({ message: "Account erfolgreich gelöscht" });
+  } catch (error) {
+    console.error("Delete Account Error:", error);
+    res.status(500).json({ message: `Fehler beim Löschen des Accounts: ${error.message}` });
   }
 });
 
@@ -182,7 +256,7 @@ app.get("/api/groups/:groupId", authenticateToken, async (req, res) => {
         members: {
           include: {
             user: {
-              select: { id: true, username: true, displayName: true },
+              select: { id: true, username: true, displayName: true, iban: true, pb: true },
             },
           },
         },

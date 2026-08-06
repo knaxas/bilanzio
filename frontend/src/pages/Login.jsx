@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { buildApiUrl } from "../config/api";
+import BackgroundLayout from "../components/BackgroundLayout";
 
 export default function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
@@ -48,72 +49,77 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div style={styles.pageBackground}>
+    <BackgroundLayout>
       <style>{keyframeStyles}</style>
 
-      <div style={styles.card}>
-        <div style={styles.headerContainer}>
-          <div style={styles.logoBadge}>💎</div>
-          <h2 style={styles.title}>Willkommen zurück</h2>
-          <p style={styles.subtitle}>Melde dich an, um deine Finanzen zu verwalten</p>
-        </div>
-
-        {error && <div style={styles.errorMessage}>{error}</div>}
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label htmlFor="username" style={styles.label}>
-              Benutzername
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              placeholder="z.B. max_mustermann"
-              style={styles.input}
-            />
+      <div style={styles.centerWrapper}>
+        <div style={styles.card} className="card-animated">
+          <div style={styles.headerContainer}>
+            <div style={styles.logoBadge}>💎</div>
+            <h2 style={styles.title}>Willkommen zurück</h2>
+            <p style={styles.subtitle}>Melde dich an, um deine Finanzen zu verwalten</p>
           </div>
 
-          <div style={styles.inputGroup}>
-            <label htmlFor="password" style={styles.label}>
-              Passwort
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              style={styles.input}
-            />
+          {error && <div style={styles.errorMessage}>{error}</div>}
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label htmlFor="username" style={styles.label}>
+                Benutzername
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                placeholder="z.B. max_mustermann"
+                style={styles.input}
+                className="form-input"
+              />
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label htmlFor="password" style={styles.label}>
+                Passwort
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                style={styles.input}
+                className="form-input"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                ...styles.button,
+                opacity: submitting ? 0.7 : 1,
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+              className="primary-btn"
+            >
+              {submitting ? "Melde an..." : "Anmelden"}
+            </button>
+          </form>
+
+          <div style={styles.footer}>
+            <p style={styles.footerText}>
+              Noch kein Konto?{" "}
+              <Link to="/register" style={styles.link}>
+                Registrieren
+              </Link>
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              ...styles.button,
-              opacity: submitting ? 0.7 : 1,
-              cursor: submitting ? "not-allowed" : "pointer",
-            }}
-          >
-            {submitting ? "Melde an..." : "Anmelden"}
-          </button>
-        </form>
-
-        <div style={styles.footer}>
-          <p style={styles.footerText}>
-            Noch kein Konto?{" "}
-            <Link to="/register" style={styles.link}>
-              Registrieren
-            </Link>
-          </p>
         </div>
       </div>
-    </div>
+    </BackgroundLayout>
   );
 }
 
@@ -131,84 +137,96 @@ const keyframeStyles = `
 
   @keyframes pulseGlow {
     0%, 100% {
-      box-shadow: 0 0 25px rgba(212, 175, 55, 0.25);
+      box-shadow: 0 0 25px rgba(212, 175, 55, 0.25), 0 20px 50px rgba(0, 0, 0, 0.8);
     }
     50% {
-      box-shadow: 0 0 40px rgba(212, 175, 55, 0.4);
+      box-shadow: 0 0 45px rgba(212, 175, 55, 0.45), 0 20px 50px rgba(0, 0, 0, 0.8);
     }
   }
 
-  input:focus {
-    border-color: #d4af37 !important;
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3) !important;
+  .card-animated {
+    animation: cardEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards, pulseGlow 4s infinite ease-in-out;
+  }
+
+  .form-input {
+    transition: all 0.25s ease !important;
     outline: none !important;
   }
 
-  button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4) !important;
-    filter: brightness(1.05);
+  .form-input:focus {
+    border-color: #d4af37 !important;
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.35) !important;
+    background-color: #08090d !important;
   }
 
-  button:active:not(:disabled) {
-    transform: translateY(0);
+  .primary-btn {
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .primary-btn:hover:not(:disabled) {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5) !important;
+    filter: brightness(1.1);
+  }
+
+  .primary-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98) !important;
   }
 `;
 
 const styles = {
-  pageBackground: {
-    minHeight: "100vh",
-    width: "100%",
+  centerWrapper: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0d0e12",
-    backgroundImage: `
-      radial-gradient(circle at 20% 20%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.05) 0%, transparent 40%)
-    `,
-    padding: "1.5rem",
-    boxSizing: "border-box",
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    pointerEvents: "none", // Damit Klicks im Hintergrund nicht blockiert werden
+    zIndex: 10,
   },
   card: {
+    pointerEvents: "auto", // Reaktivert Klicks auf der Card
+    position: "relative",
     width: "100%",
     maxWidth: "420px",
-    backgroundColor: "rgba(22, 24, 31, 0.85)",
+    backgroundColor: "rgba(14, 16, 22, 0.92)",
     backdropFilter: "blur(16px)",
-    borderRadius: "20px",
-    border: "1px solid rgba(212, 175, 55, 0.2)",
+    borderRadius: "24px",
+    border: "1px solid rgba(212, 175, 55, 0.35)",
     padding: "2.5rem 2rem",
     boxSizing: "border-box",
-    animation: "cardEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards, pulseGlow 6s infinite ease-in-out",
   },
   headerContainer: {
     textAlign: "center",
     marginBottom: "2rem",
   },
   logoBadge: {
-    width: "50px",
-    height: "50px",
-    margin: "0 auto 1rem auto",
-    borderRadius: "50%",
-    background: "linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(255, 215, 0, 0.05) 100%)",
+    width: "52px",
+    height: "52px",
+    margin: "0 auto 1.25rem auto",
+    borderRadius: "16px",
+    backgroundColor: "rgba(212, 175, 55, 0.12)",
     border: "1px solid rgba(212, 175, 55, 0.4)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "1.5rem",
+    boxShadow: "0 0 15px rgba(212, 175, 55, 0.2)",
   },
   title: {
     margin: "0 0 0.5rem 0",
-    color: "#f8f9fa",
+    color: "#f3f4f6",
     fontSize: "1.75rem",
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: "-0.5px",
   },
   subtitle: {
     margin: 0,
-    color: "#a0a5b5",
-    fontSize: "0.9rem",
+    color: "#8e95a5",
+    fontSize: "0.875rem",
   },
   form: {
     display: "flex",
@@ -218,25 +236,24 @@ const styles = {
   inputGroup: {
     display: "flex",
     flexDirection: "column",
-    gap: "0.5rem",
+    gap: "0.45rem",
   },
   label: {
     color: "#d4af37",
-    fontSize: "0.85rem",
-    fontWeight: "600",
-    letterSpacing: "0.5px",
+    fontSize: "0.725rem",
+    fontWeight: "700",
+    letterSpacing: "0.8px",
     textTransform: "uppercase",
   },
   input: {
     width: "100%",
     padding: "0.85rem 1rem",
     borderRadius: "12px",
-    backgroundColor: "rgba(10, 11, 15, 0.7)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#08090d",
+    border: "1px solid rgba(212, 175, 55, 0.2)",
     color: "#ffffff",
-    fontSize: "1rem",
+    fontSize: "0.95rem",
     boxSizing: "border-box",
-    transition: "all 0.25s ease",
   },
   button: {
     width: "100%",
@@ -245,38 +262,36 @@ const styles = {
     borderRadius: "12px",
     border: "none",
     background: "linear-gradient(135deg, #d4af37 0%, #f3e5ab 50%, #aa7c11 100%)",
-    color: "#0d0e12",
+    color: "#07080c",
     fontSize: "1rem",
-    fontWeight: "700",
+    fontWeight: "800",
     letterSpacing: "0.3px",
-    transition: "all 0.25s ease",
-    boxShadow: "0 4px 15px rgba(212, 175, 55, 0.2)",
+    boxShadow: "0 4px 15px rgba(212, 175, 55, 0.3)",
   },
   errorMessage: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
     border: "1px solid rgba(239, 68, 68, 0.3)",
     color: "#fca5a5",
     padding: "0.75rem 1rem",
-    borderRadius: "10px",
-    fontSize: "0.875rem",
-    marginBottom: "1.5rem",
+    borderRadius: "12px",
+    fontSize: "0.85rem",
+    marginBottom: "1.25rem",
     wordBreak: "break-word",
   },
   footer: {
     marginTop: "2rem",
     textAlign: "center",
-    borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
     paddingTop: "1.25rem",
   },
   footerText: {
     margin: 0,
-    color: "#a0a5b5",
-    fontSize: "0.9rem",
+    color: "#8e95a5",
+    fontSize: "0.875rem",
   },
   link: {
     color: "#d4af37",
     textDecoration: "none",
-    fontWeight: "600",
-    transition: "color 0.2s ease",
+    fontWeight: "700",
   },
 };

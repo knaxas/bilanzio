@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import GroupDetail from "./pages/GroupDetail";
 import Invite from "./pages/Invite";
+import Profile from "./pages/Profile";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -25,7 +26,6 @@ export default function App() {
         localStorage.removeItem("token");
       }
     } else {
-      // Aufräumen falls ungültige Strings wie "undefined" im Storage lagen
       localStorage.removeItem("user");
       localStorage.removeItem("token");
     }
@@ -108,15 +108,25 @@ export default function App() {
           }
         />
         <Route
-  path="/invite/:groupId"
-  element={
-    token ? (
-      <Invite token={token} />
-    ) : (
-      <Navigate to="/login" replace />
-    )
-  }
-/>
+          path="/invite/:groupId"
+          element={
+            token ? (
+              <Invite token={token} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            token ? (
+              <Profile user={user} token={token} onLogout={handleLogout} setUser={setUser} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
         <Route
           path="*"
           element={<Navigate to={token ? "/home" : "/login"} replace />}

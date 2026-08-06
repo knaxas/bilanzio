@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildApiUrl } from "../config";
+import BackgroundLayout from "../components/BackgroundLayout";
 
 export default function Home({ user, token, onLogout }) {
   const [groups, setGroups] = useState([]);
@@ -14,15 +15,15 @@ export default function Home({ user, token, onLogout }) {
 
   const navigate = useNavigate();
 
-const fetchGroups = async () => {
-  try {
-    const url = buildApiUrl("/api/groups");
+  const fetchGroups = async () => {
+    try {
+      const url = buildApiUrl("/api/groups");
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await response.json();
 
@@ -55,7 +56,6 @@ const fetchGroups = async () => {
 
       setGroups(enrichedGroups);
     } catch (err) {
-      console.error("Fehler beim Abrufen der Gruppen:", err);
       setError(err.message || "Gruppen konnten nicht geladen werden.");
     }
   };
@@ -68,7 +68,6 @@ const fetchGroups = async () => {
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
-    console.log("handleCreateGroup triggered", { newGroupName, token, apiUrl: buildApiUrl("/api/groups") });
     if (!newGroupName.trim()) return;
 
     if (!token || token === "undefined" || token === "null") {
@@ -98,11 +97,9 @@ const fetchGroups = async () => {
       }
 
       if (!response.ok) {
-        console.error("Gruppe erstellen fehlgeschlagen:", response.status, data);
         throw new Error(data.message || `Gruppe konnte nicht erstellt werden (${response.status})`);
       }
 
-      console.log("Gruppe erstellt:", data);
       setNewGroupName("");
       setIsModalOpen(false);
       setGroups((prev) => [...prev, data.group]);
@@ -150,197 +147,195 @@ const fetchGroups = async () => {
   const filteredGroups = getFilteredAndSortedGroups();
 
   return (
-    <div style={styles.pageBackground}>
-      <style>{keyframeStyles}</style>
+    <BackgroundLayout>
+      <div style={styles.pageWrapper}>
+        <style dangerouslySetInnerHTML={{ __html: keyframeStyles }} />
 
-      {/* Dynamic Background Glow Spheres */}
-      <div style={styles.glowSphere1} />
-      <div style={styles.glowSphere2} />
-
-      <nav style={styles.navbar}>
-        <div style={styles.navBrand}>
-          <div style={styles.logoBadge}>💎</div>
-          <div>
-            <h1 style={styles.navTitle}>Klimax Schulden</h1>
-            <span style={styles.badgePro}>ULTIMATE EDITION</span>
-          </div>
-        </div>
-
-        <div style={styles.navActions}>
-          <button
-            style={styles.secondaryButton}
-            onClick={() => alert("Profil bearbeiten - Demnächst verfügbar!")}
-          >
-            👤 Profil
-          </button>
-          <button style={styles.logoutButton} onClick={onLogout}>
-            Abmelden ➔
-          </button>
-        </div>
-      </nav>
-
-      <main style={styles.container}>
-        {error && (
-          <div style={styles.pageErrorBanner}>
-            {error}
-          </div>
-        )}
-        <div style={styles.welcomeCard}>
-          <div style={{ flex: "1 1 280px" }}>
-            <h2 style={styles.welcomeTitle}>
-              Hallo, <span style={styles.goldGradientText}>{user?.displayName || user?.username || "Finanz-Profi"}</span> 👋
-            </h2>
-            <p style={styles.welcomeSubtitle}>
-              Behalte die absolute Kontrolle über alle gemeinsamen Finanzen und Gruppen-Ausgaben.
-            </p>
-          </div>
-          <button style={styles.primaryButton} onClick={() => setIsModalOpen(true)}>
-            <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>+</span> Neue Gruppe
-          </button>
-        </div>
-
-        <section style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <h3 style={styles.sectionTitle}>Deine Gruppen</h3>
-              <span style={styles.countBadge}>{filteredGroups.length}</span>
-            </div>
-
-            <div style={styles.controlsRow}>
-              <div style={styles.selectWrapper}>
-                <select style={styles.selectInput} value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-                  <option value="all">⚡ Alle Gruppen</option>
-                  <option value="admin">👑 Nur Admin</option>
-                  <option value="member">👥 Nur Mitglied</option>
-                </select>
-              </div>
-
-              <div style={styles.selectWrapper}>
-                <select style={styles.selectInput} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  <option value="newest">🕒 Neueste zuerst</option>
-                  <option value="oldest">⏳ Älteste zuerst</option>
-                  <option value="name">🔤 Name (A-Z)</option>
-                  <option value="members">🔥 Meiste Mitglieder</option>
-                </select>
-              </div>
+        <nav style={styles.navbar}>
+          <div style={styles.navBrand}>
+            <div style={styles.logoBadge}>💎</div>
+            <div>
+              <h1 style={styles.navTitle}>Klimax Schulden</h1>
+              <span style={styles.badgePro}>ULTIMATE EDITION</span>
             </div>
           </div>
 
-          {filteredGroups.length === 0 ? (
-            <div style={styles.emptyState}>
-              <div style={styles.emptyIcon}>📂</div>
-              <h4 style={{ margin: "0.5rem 0 0.25rem 0", color: "#fff", fontSize: "1.1rem" }}>Keine Gruppen gefunden</h4>
-              <p style={{ margin: 0, color: "#8a90a2", fontSize: "0.9rem", maxWidth: "400px", marginInline: "auto" }}>
-                Erstelle mit dem Button oben deine erste Gruppe oder verändere die aktiven Filter!
-              </p>
-            </div>
-          ) : (
-            <div style={styles.grid}>
-              {filteredGroups.map((group) => {
-                const currentUserMember = group.members?.find((m) => m.userId === user?.id);
-                const isAdmin = currentUserMember?.role === "ADMIN" || group.createdById === user?.id;
+          <div style={styles.navActions}>
+            <button
+              style={styles.secondaryButton}
+              onClick={() => navigate("/profile")}
+            >
+              👤 Profil
+            </button>
+            <button style={styles.logoutButton} onClick={onLogout}>
+              Abmelden ➔
+            </button>
+          </div>
+        </nav>
 
-                const adminMember = group.members?.find((m) => m.role === "ADMIN");
-
-                let adminName = "Unbekannt";
-                if (adminMember?.user) {
-                  adminName = adminMember.user.displayName || adminMember.user.username;
-                } else if (isAdmin) {
-                  adminName = user?.displayName || user?.username || "Du";
-                } else if (group.createdBy) {
-                  adminName = group.createdBy.displayName || group.createdBy.username;
-                }
-
-                const memberCount = group.members?.length ?? 0;
-
-                return (
-                  <div
-                    key={group.id}
-                    className="group-card"
-                    style={styles.groupCard}
-                    onClick={() => navigate(`/group/${group.id}`)}
-                  >
-                    <div style={styles.groupHeader}>
-                      <div style={styles.iconWrapper}>
-                        <span style={styles.groupIcon}>👥</span>
-                        {isAdmin && <span style={styles.crownBadge} title="Du bist Admin">👑</span>}
-                      </div>
-                      <h4 style={styles.groupName}>{group.name}</h4>
-                    </div>
-
-                    <div style={styles.groupMetaContainer}>
-                      <div style={styles.metaRow}>
-                        <span style={styles.metaLabel}>👑 Admin</span>
-                        <span style={styles.metaValue}>{adminName}</span>
-                      </div>
-                      <div style={styles.metaRow}>
-                        <span style={styles.metaLabel}>👥 Mitglieder</span>
-                        <span style={styles.pillBadge}>{memberCount} Pers.</span>
-                      </div>
-                      {group.createdAt && (
-                        <div style={{ ...styles.metaRow, marginTop: "0.2rem" }}>
-                          <span style={{ ...styles.metaLabel, fontSize: "0.75rem" }}>📅 Erstellt</span>
-                          <span style={{ ...styles.metaValue, color: "#6c7284", fontSize: "0.78rem" }}>
-                            {new Date(group.createdAt).toLocaleDateString("de-DE")}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={styles.cardArrow}>➔</div>
-                  </div>
-                );
-              })}
+        <main style={styles.container}>
+          {error && (
+            <div style={styles.pageErrorBanner}>
+              {error}
             </div>
           )}
-        </section>
-
-        {isModalOpen && (
-          <div style={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
-            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <h3 style={styles.modalTitle}>Neue Gruppe starten</h3>
-                <button style={styles.closeModalBtn} onClick={() => setIsModalOpen(false)}>✕</button>
-              </div>
-              
-              {error && <div style={styles.errorMessage}>{error}</div>}
-
-              <form onSubmit={handleCreateGroup} style={styles.form}>
-                <div style={styles.inputGroup}>
-                  <label htmlFor="groupName" style={styles.label}>
-                    Name der Gruppe
-                  </label>
-                  <input
-                    id="groupName"
-                    type="text"
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    placeholder="z.B. WG Kitzingen, Sommerurlaub, Party..."
-                    required
-                    style={styles.input}
-                    autoFocus
-                  />
-                </div>
-
-                <div style={styles.modalActions}>
-                  <button
-                    type="button"
-                    style={styles.cancelButton}
-                    onClick={() => setIsModalOpen(false)}
-                    disabled={loading}
-                  >
-                    Abbrechen
-                  </button>
-                  <button type="submit" style={styles.primaryButton} disabled={loading}>
-                    {loading ? "Erstelle..." : "Gruppe Erstellen 🎉"}
-                  </button>
-                </div>
-              </form>
+          <div style={styles.welcomeCard}>
+            <div style={{ flex: "1 1 280px" }}>
+              <h2 style={styles.welcomeTitle}>
+                Hallo, <span style={styles.goldGradientText}>{user?.displayName || user?.username || "Finanz-Profi"}</span> 👋
+              </h2>
+              <p style={styles.welcomeSubtitle}>
+                Behalte die absolute Kontrolle über alle gemeinsamen Finanzen und Gruppen-Ausgaben.
+              </p>
             </div>
+            <button style={styles.primaryButton} onClick={() => setIsModalOpen(true)}>
+              <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>+</span> Neue Gruppe
+            </button>
           </div>
-        )}
-      </main>
-    </div>
+
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <h3 style={styles.sectionTitle}>Deine Gruppen</h3>
+                <span style={styles.countBadge}>{filteredGroups.length}</span>
+              </div>
+
+              <div style={styles.controlsRow}>
+                <div style={styles.selectWrapper}>
+                  <select style={styles.selectInput} value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+                    <option value="all">⚡ Alle Gruppen</option>
+                    <option value="admin">👑 Nur Admin</option>
+                    <option value="member">👥 Nur Mitglied</option>
+                  </select>
+                </div>
+
+                <div style={styles.selectWrapper}>
+                  <select style={styles.selectInput} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    <option value="newest">🕒 Neueste zuerst</option>
+                    <option value="oldest">⏳ Älteste zuerst</option>
+                    <option value="name">🔤 Name (A-Z)</option>
+                    <option value="members">🔥 Meiste Mitglieder</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {filteredGroups.length === 0 ? (
+              <div style={styles.emptyState}>
+                <div style={styles.emptyIcon}>📂</div>
+                <h4 style={{ margin: "0.5rem 0 0.25rem 0", color: "#fff", fontSize: "1.1rem" }}>Keine Gruppen gefunden</h4>
+                <p style={{ margin: 0, color: "#8a90a2", fontSize: "0.9rem", maxWidth: "400px", marginInline: "auto" }}>
+                  Erstelle mit dem Button oben deine erste Gruppe oder verändere die aktiven Filter!
+                </p>
+              </div>
+            ) : (
+              <div style={styles.grid}>
+                {filteredGroups.map((group) => {
+                  const currentUserMember = group.members?.find((m) => m.userId === user?.id);
+                  const isAdmin = currentUserMember?.role === "ADMIN" || group.createdById === user?.id;
+
+                  const adminMember = group.members?.find((m) => m.role === "ADMIN");
+
+                  let adminName = "Unbekannt";
+                  if (adminMember?.user) {
+                    adminName = adminMember.user.displayName || adminMember.user.username;
+                  } else if (isAdmin) {
+                    adminName = user?.displayName || user?.username || "Du";
+                  } else if (group.createdBy) {
+                    adminName = group.createdBy.displayName || group.createdBy.username;
+                  }
+
+                  const memberCount = group.members?.length ?? 0;
+
+                  return (
+                    <div
+                      key={group.id}
+                      className="group-card"
+                      style={styles.groupCard}
+                      onClick={() => navigate(`/group/${group.id}`)}
+                    >
+                      <div style={styles.groupHeader}>
+                        <div style={styles.iconWrapper}>
+                          <span style={styles.groupIcon}>👥</span>
+                          {isAdmin && <span style={styles.crownBadge} title="Du bist Admin">👑</span>}
+                        </div>
+                        <h4 style={styles.groupName}>{group.name}</h4>
+                      </div>
+
+                      <div style={styles.groupMetaContainer}>
+                        <div style={styles.metaRow}>
+                          <span style={styles.metaLabel}>👑 Admin</span>
+                          <span style={styles.metaValue}>{adminName}</span>
+                        </div>
+                        <div style={styles.metaRow}>
+                          <span style={styles.metaLabel}>👥 Mitglieder</span>
+                          <span style={styles.pillBadge}>{memberCount} Pers.</span>
+                        </div>
+                        {group.createdAt && (
+                          <div style={{ ...styles.metaRow, marginTop: "0.2rem" }}>
+                            <span style={{ ...styles.metaLabel, fontSize: "0.75rem" }}>📅 Erstellt</span>
+                            <span style={{ ...styles.metaValue, color: "#6c7284", fontSize: "0.78rem" }}>
+                              {new Date(group.createdAt).toLocaleDateString("de-DE")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="card-arrow" style={styles.cardArrow}>➔</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {isModalOpen && (
+            <div style={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+              <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>Neue Gruppe starten</h3>
+                  <button style={styles.closeModalBtn} onClick={() => setIsModalOpen(false)}>✕</button>
+                </div>
+                
+                {error && <div style={styles.errorMessage}>{error}</div>}
+
+                <form onSubmit={handleCreateGroup} style={styles.form}>
+                  <div style={styles.inputGroup}>
+                    <label htmlFor="groupName" style={styles.label}>
+                      Name der Gruppe
+                    </label>
+                    <input
+                      id="groupName"
+                      type="text"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="z.B. WG Kitzingen, Sommerurlaub, Party..."
+                      required
+                      style={styles.input}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div style={styles.modalActions}>
+                    <button
+                      type="button"
+                      style={styles.cancelButton}
+                      onClick={() => setIsModalOpen(false)}
+                      disabled={loading}
+                    >
+                      Abbrechen
+                    </button>
+                    <button type="submit" style={styles.primaryButton} disabled={loading}>
+                      {loading ? "Erstelle..." : "Gruppe Erstellen 🎉"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </BackgroundLayout>
   );
 }
 
@@ -351,7 +346,6 @@ const keyframeStyles = `
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Custom Premium Scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
   }
@@ -364,11 +358,6 @@ const keyframeStyles = `
   }
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(212, 175, 55, 0.5);
-  }
-
-  @keyframes pulseGlow {
-    0%, 100% { opacity: 0.12; transform: scale(1); }
-    50% { opacity: 0.22; transform: scale(1.08); }
   }
 
   @keyframes fadeIn {
@@ -436,41 +425,12 @@ const keyframeStyles = `
 `;
 
 const styles = {
-  pageBackground: {
+  pageWrapper: {
+    width: "100%",
     minHeight: "100vh",
-    backgroundColor: "#0a0b0e",
-    backgroundImage: `
-      radial-gradient(rgba(212, 175, 55, 0.07) 1px, transparent 0),
-      radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.08) 0%, transparent 60%)
-    `,
-    backgroundSize: "24px 24px, 100% 100%",
     color: "#f8f9fa",
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     paddingBottom: "3rem",
-    position: "relative",
-    overflowX: "hidden",
-  },
-  glowSphere1: {
-    position: "absolute",
-    top: "-150px",
-    left: "-150px",
-    width: "450px",
-    height: "450px",
-    borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(212, 175, 55, 0.25) 0%, transparent 70%)",
-    pointerEvents: "none",
-    animation: "pulseGlow 8s infinite ease-in-out",
-  },
-  glowSphere2: {
-    position: "absolute",
-    bottom: "10%",
-    right: "-100px",
-    width: "400px",
-    height: "400px",
-    borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(255, 215, 0, 0.12) 0%, transparent 70%)",
-    pointerEvents: "none",
-    animation: "pulseGlow 10s infinite ease-in-out 2s",
   },
   navbar: {
     display: "flex",
@@ -487,6 +447,7 @@ const styles = {
     flexWrap: "wrap",
     gap: "1rem",
     boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+    width: "100%",
   },
   navBrand: {
     display: "flex",
@@ -711,6 +672,14 @@ const styles = {
     borderRadius: "10px",
     fontSize: "0.78rem",
     fontWeight: "700",
+  },
+  cardArrow: {
+    opacity: 0,
+    transform: "translateX(-5px)",
+    transition: "all 0.2s ease",
+    color: "#d4af37",
+    marginTop: "0.5rem",
+    textAlign: "right",
   },
   emptyState: {
     textAlign: "center",

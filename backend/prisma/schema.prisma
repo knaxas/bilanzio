@@ -11,6 +11,8 @@ model User {
   username     String        @unique
   password     String
   displayName  String
+  iban         String?       @default("")
+  pb           String?       @default("")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   memberships  GroupMember[]

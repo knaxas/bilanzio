@@ -13,43 +13,49 @@ export default function GroupDetail({ user, token, onLogout }) {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedMemberIban, setSelectedMemberIban] = useState(null);
+  const [selectedMemberName, setSelectedMemberName] = useState("");
 
   useEffect(() => {
-    const fetchGroup = async () => {
+    let isMounted = true;
+
+    const loadData = async () => {
       try {
-        const res = await fetch(buildApiUrl(`/api/groups/${groupId}`), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setGroup(data);
-          setCreditorId(user?.id || "");
+        const [groupRes, debtsRes] = await Promise.all([
+          fetch(buildApiUrl(`/api/groups/${groupId}`), {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(buildApiUrl(`/api/groups/${groupId}/debts`), {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (groupRes.ok && isMounted) {
+          const groupData = await groupRes.json();
+
+          let debtsData = [];
+          if (debtsRes.ok) {
+            const jd = await debtsRes.json();
+            debtsData = jd.debts || [];
+          }
+
+          setGroup({ ...groupData, debts: debtsData });
+          if (user?.id) {
+            setCreditorId(user.id);
+          }
         }
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
-      }
-    };
-    fetchGroup();
-
-    const fetchDebts = async () => {
-      try {
-        const r = await fetch(buildApiUrl(`/api/groups/${groupId}/debts`), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (r.ok) {
-          const jd = await r.json();
-          setGroup((g) => ({ ...(g || {}), debts: jd.debts || [] }));
-        } else {
-          console.warn('Could not fetch debts list:', r.status);
-        }
-      } catch (e) {
-        console.error('Error fetching debts separately:', e);
+        if (isMounted) setLoading(false);
       }
     };
 
-    fetchDebts();
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [groupId, token, user?.id]);
 
   useEffect(() => {
@@ -61,20 +67,24 @@ export default function GroupDetail({ user, token, onLogout }) {
 
   const currentUserMember = group?.members?.find((m) => m.userId === user?.id);
   const isAdmin = currentUserMember?.role === "ADMIN";
+  const currentUserName = user?.displayName || user?.username;
 
   const totalDebts = group?.debts?.reduce((acc, curr) => acc + Number(curr.amount || 0), 0) || 0;
+  
   const myOwed = group?.debts
-    ?.filter((d) => d.debtorName === (user?.displayName || user?.username))
+    ?.filter((d) => d.debtorId === user?.id || d.debtorName === currentUserName)
     .reduce((acc, curr) => acc + Number(curr.amount || 0), 0) || 0;
+
   const myReceivables = group?.debts
-    ?.filter((d) => d.creditorName === (user?.displayName || user?.username))
+    ?.filter((d) => d.creditorId === user?.id || d.creditorName === currentUserName)
     .reduce((acc, curr) => acc + Number(curr.amount || 0), 0) || 0;
+
   const myBalance = myReceivables - myOwed;
 
   const handleCopyInviteLink = () => {
     const inviteUrl = `${window.location.origin}/invite/${groupId}`;
     navigator.clipboard.writeText(inviteUrl);
-    alert("✨ Einladungslink kopiert! Teile ihn mit deiner Gruppe.");
+    alert("Einladungslink kopiert!");
   };
 
   const handleLeaveOrDelete = async () => {
@@ -84,8 +94,12 @@ export default function GroupDetail({ user, token, onLogout }) {
 
     if (!window.confirm(confirmMessage)) return;
 
+    const endpoint = isAdmin 
+      ? `/api/groups/${groupId}` 
+      : `/api/groups/${groupId}/leave`;
+
     try {
-      const res = await fetch(buildApiUrl(`/api/groups/${groupId}/leave`), {
+      const res = await fetch(buildApiUrl(endpoint), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -102,8 +116,9 @@ export default function GroupDetail({ user, token, onLogout }) {
 
   const handleCreateDebt = async (e) => {
     e.preventDefault();
-    if (!amount || !debtorId || !creditorId)
+    if (!amount || !debtorId || !creditorId) {
       return alert("Bitte wähle Schuldner, Empfänger und gib einen gültigen Betrag an.");
+    }
     
     setCreating(true);
     try {
@@ -157,263 +172,347 @@ export default function GroupDetail({ user, token, onLogout }) {
           <div style={styles.spinner}></div>
         </div>
         <p style={{ color: "#e2b842", marginTop: "1.2rem", fontWeight: "600", letterSpacing: "1px", fontSize: "0.95rem" }}>
-          LADE Userdaten...
+          LADE GRUPPEN-DATEN...
         </p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
+    <div style={styles.wrapper}>
       <style>{keyframeStyles}</style>
-
-      <header style={styles.header}>
-        <button onClick={() => navigate("/home")} style={styles.backBtn} className="action-btn">
-          ← Übersicht
-        </button>
-        {onLogout && (
-          <button onClick={onLogout} style={styles.logoutBtn} className="logout-btn">
-            Abmelden 🚪
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <button onClick={() => navigate("/home")} style={styles.backBtn} className="action-btn">
+            ← Übersicht
           </button>
-        )}
-      </header>
+          {onLogout && (
+            <button onClick={onLogout} style={styles.logoutBtn} className="logout-btn">
+              Abmelden 🚪
+            </button>
+          )}
+        </header>
 
-      <main style={styles.mainContent}>
-        <div style={styles.heroCard} className="card-animated">
-          <div style={styles.heroMain}>
-            <div style={styles.heroTextGroup}>
-              <div style={styles.badgeRow}>
-                <span style={styles.metaBadge}>ID: {groupId}</span>
-                {isAdmin && <span style={styles.adminHeroBadge}>👑</span>}
-              </div>
-              <h1 style={styles.groupTitle}>{group?.name || "Gruppe"}</h1>
-            </div>
-
-            <div style={styles.actionGroup}>
-              <button onClick={handleCopyInviteLink} style={styles.inviteBtn} className="invite-btn">
-                🔗 Link kopieren
-              </button>
-              <button
-                onClick={handleLeaveOrDelete}
-                className="danger-btn"
-                style={{
-                  ...styles.dangerBtn,
-                  backgroundColor: isAdmin ? "rgba(239, 68, 68, 0.12)" : "rgba(255, 255, 255, 0.04)",
-                  color: isAdmin ? "#fca5a5" : "#aaa",
-                  borderColor: isAdmin ? "rgba(239, 68, 68, 0.3)" : "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                {isAdmin ? "🗑️ Gruppe löschen" : "🚪 Verlassen"}
-              </button>
-            </div>
-          </div>
-
-          <div style={styles.statsBar}>
-            <div style={styles.statBox}>
-              <span style={styles.statLabel}>Gesamte Ausgaben</span>
-              <span style={styles.statValue}>
-                {totalDebts.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-              </span>
-            </div>
-            <div style={styles.statDivider} />
-            <div style={styles.statBox}>
-              <span style={styles.statLabel}>Deine<br />Bilanz</span>
-              <span
-                style={{
-                  ...styles.statValue,
-                  color: myBalance > 0 ? "#4ade80" : myBalance < 0 ? "#f87171" : "#f3f4f6",
-                }}
-              >
-                {myBalance > 0 ? "+" : ""}
-                {myBalance.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div style={styles.gridContainer}>
-          <section style={styles.card} className="card-animated">
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>👥 Mitglieder ({group?.members?.length || 0})</h3>
-            </div>
-            <ul style={styles.memberList}>
-              {group?.members?.map((member) => {
-                const isCurrentUser = member.userId === user?.id;
-                return (
-                  <li key={member.id} style={styles.memberItem} className="list-item">
-                    <div style={styles.memberInfo}>
-                      <div style={styles.avatar}>
-                        {(member.user?.displayName || member.user?.username || "?")
-                          .charAt(0)
-                          .toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={styles.memberName}>
-                          {member.user?.displayName || member.user?.username}
-                          {isCurrentUser && <span style={styles.youBadge}> (Du)</span>}
-                        </div>
-                        <div style={styles.memberUsername}>@{member.user?.username || "unbekannt"}</div>
-                      </div>
-                    </div>
-                    <span
-                      style={{
-                        ...styles.roleBadge,
-                        backgroundColor: member.role === "ADMIN" ? "rgba(212, 175, 55, 0.12)" : "rgba(255, 255, 255, 0.04)",
-                        color: member.role === "ADMIN" ? "#e2b842" : "#888",
-                        borderColor: member.role === "ADMIN" ? "rgba(212, 175, 55, 0.3)" : "rgba(255, 255, 255, 0.08)",
-                      }}
-                    >
-                      {member.role === "ADMIN" ? "👑 Admin" : "Mitglied"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          <section style={styles.card} className="card-animated">
-            <div style={styles.cardHeader}>
-              <h3 style={styles.cardTitle}>💸 Ausgaben & Schulden</h3>
-            </div>
-            
-            <div style={{ marginBottom: "1.75rem" }}>
-              <form onSubmit={handleCreateDebt} style={styles.debtForm}>
-                <div style={styles.formHeaderTitle}>Neue Ausgabe eintragen</div>
-                
-                <div style={styles.formGrid}>
-                  <div style={styles.formRow}>
-                    <label style={styles.label}>Wer schuldet?</label>
-                    <select
-                      value={debtorId}
-                      onChange={(e) => setDebtorId(e.target.value)}
-                      style={styles.select}
-                      className="form-input"
-                    >
-                      <option value="">Wählen...</option>
-                      {group?.members?.map((m) => (
-                        <option key={m.id} value={m.userId}>
-                          {m.user?.displayName || m.user?.username}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <label style={styles.label}>Wer bekommt?</label>
-                    <select
-                      value={creditorId}
-                      onChange={(e) => setCreditorId(e.target.value)}
-                      style={styles.select}
-                      className="form-input"
-                    >
-                      <option value="">Wählen...</option>
-                      {group?.members?.map((m) => (
-                        <option key={m.id} value={m.userId}>
-                          {m.user?.displayName || m.user?.username}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <label style={styles.label}>Betrag (€)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0.00"
-                      style={styles.input}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <label style={styles.label}>Verwendungszweck</label>
-                    <input
-                      type="text"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="z. B. Einkaufen, Pizza"
-                      style={styles.input}
-                      className="form-input"
-                    />
-                  </div>
+        <main style={styles.mainContent}>
+          <div style={styles.heroCard} className="card-animated">
+            <div style={styles.heroMain}>
+              <div style={styles.heroTextGroup}>
+                <div style={styles.badgeRow}>
+                  <span style={styles.metaBadge}>ID: {groupId}</span>
+                  <span style={styles.adminHeroBadge}>
+                    {isAdmin ? "👑 Admin" : "👤 Mitglied"}
+                  </span>
                 </div>
+                <h1 style={styles.groupTitle}>{group?.name || "Gruppe"}</h1>
+              </div>
 
-                <button type="submit" disabled={creating} style={styles.submitBtn} className="primary-btn">
-                  {creating ? "Speichere..." : "➕ Ausgabe buchen"}
+              <div style={styles.actionGroup}>
+                <button onClick={handleCopyInviteLink} style={styles.inviteBtn} className="invite-btn">
+                  🔗 Link kopieren
                 </button>
-              </form>
+                <button
+                  onClick={handleLeaveOrDelete}
+                  className="danger-btn"
+                  style={{
+                    ...styles.dangerBtn,
+                    backgroundColor: isAdmin ? "rgba(239, 68, 68, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                    color: isAdmin ? "#fca5a5" : "#aaa",
+                    borderColor: isAdmin ? "rgba(239, 68, 68, 0.3)" : "rgba(255, 255, 255, 0.1)",
+                  }}
+                >
+                  {isAdmin ? "🗑️ Gruppe löschen" : "🚪 Verlassen"}
+                </button>
+              </div>
             </div>
 
-            {(group?.debts || []).length === 0 ? (
-              <div style={styles.emptyState}>
-                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎉</div>
-                <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#f3f4f6" }}>
-                  Alles bestens ausgeglichen!
-                </p>
-                <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: "0.3rem" }}>
-                  Keine offenen Posten in dieser Gruppe vorhanden.
-                </p>
+            <div style={styles.statsBar} className="responsive-stats">
+              <div style={styles.statBox}>
+                <span style={styles.statLabel}>Gesamte Ausgaben</span>
+                <span style={styles.statValue}>
+                  {totalDebts.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+                </span>
               </div>
-            ) : (
-              <ul style={styles.debtList}>
-                {group.debts.map((d) => {
-                  const amDebtor = d.debtorName === (user?.displayName || user?.username);
-                  const amCreditor = d.creditorName === (user?.displayName || user?.username);
-                  
-                  return (
-                    <li
-                      key={d.id}
-                      style={{
-                        ...styles.debtItem,
-                        flexDirection: isMobile ? "column" : "row",
-                        alignItems: isMobile ? "stretch" : "center",
-                      }}
-                      className="list-item"
-                    >
-                      <div style={styles.debtDetails}>
-                        <div style={styles.debtFlowText}>
-                          <span style={styles.memberNameHighlight}>{d.debtorName}</span>
-                          <span style={styles.arrowIcon}>➔</span>
-                          <span style={styles.memberNameHighlight}>{d.creditorName}</span>
-                        </div>
-                        <div style={styles.debtAmount}>
-                          {Number(d.amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-                        </div>
-                        {d.description && <div style={styles.debtDescription}>{d.description}</div>}
-                      </div>
+              <div style={styles.statDivider} className="stat-divider-responsive" />
+              <div style={styles.statBox}>
+                <span style={styles.statLabel}>Deine Bilanz</span>
+                <span
+                  style={{
+                    ...styles.statValue,
+                    color: myBalance > 0 ? "#4ade80" : myBalance < 0 ? "#f87171" : "#f3f4f6",
+                  }}
+                >
+                  {myBalance > 0 ? "+" : ""}
+                  {myBalance.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+                </span>
+              </div>
+            </div>
+          </div>
 
-                      <div style={{ ...styles.debtActionGroup, justifyContent: isMobile ? "space-between" : "flex-end" }}>
-                        {(amDebtor || amCreditor) && (
-                          <div
-                            style={{
-                              ...styles.personalBadge,
-                              backgroundColor: amDebtor ? "rgba(239, 68, 68, 0.12)" : "rgba(34, 197, 94, 0.12)",
-                              color: amDebtor ? "#fca5a5" : "#86efac",
-                              borderColor: amDebtor ? "rgba(239, 68, 68, 0.25)" : "rgba(34, 197, 94, 0.25)",
-                            }}
-                          >
-                            {amDebtor ? "Du schuldest" : "Du kriegst"}
+          <div style={styles.gridContainer} className="responsive-grid">
+            <section style={styles.card} className="card-animated">
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>👥 Mitglieder ({group?.members?.length || 0})</h3>
+              </div>
+              <p style={{ fontSize: "0.8rem", color: "#888", marginBottom: "1rem" }}>
+                Klicke auf ein Mitglied, um die IBAN einzusehen.
+              </p>
+              <ul style={styles.memberList}>
+                {group?.members?.map((member, index) => {
+                  const isCurrentUser = member.userId === user?.id;
+                  const uObj = member.user || member.account || member.memberInfo || member; 
+                  const name = uObj.displayName || uObj.name || uObj.username || member.displayName || member.name || "Unbekannt";
+                  
+                  const profilePic = 
+                    uObj.pb || uObj.profilePicture || uObj.avatarUrl || uObj.avatar || uObj.image || uObj.profile_picture || 
+                    member.pb || member.profilePicture || member.avatarUrl || member.avatar || "";
+
+                  return (
+                    <li 
+                      key={member.id || member.userId || member.email || index} 
+                      style={{ ...styles.memberItem, cursor: "pointer", position: "relative", zIndex: 5 }} 
+                      className="list-item"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const memberIban = 
+                          uObj.iban || uObj.IBAN || uObj.bankAccount || uObj.bankDetails ||
+                          member.iban || member.IBAN || member.bankAccount || null;
+                        
+                        if (memberIban) {
+                          setSelectedMemberName(name);
+                          setSelectedMemberIban(memberIban);
+                        } else {
+                          alert(`${name} hat keine IBAN angegeben.`);
+                        }
+                      }}
+                    >
+                      <div style={styles.memberInfo}>
+                        <div style={{ ...styles.avatar, overflow: "hidden" }}>
+                          {profilePic ? (
+                            <img 
+                              src={profilePic} 
+                              alt={name} 
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            name.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div>
+                          <div style={styles.memberName}>
+                            {name}
+                            {isCurrentUser && <span style={styles.youBadge}> (Du)</span>}
                           </div>
-                        )}
-                        <button
-                          onClick={() => handleDeleteDebt(d.id)}
-                          style={styles.settleBtn}
-                          className="settle-btn"
-                        >
-                          Begleichen
-                        </button>
+                          <div style={styles.memberUsername}>@{uObj.username || uObj.email || "unbekannt"}</div>
+                        </div>
                       </div>
+                      <span
+                        style={{
+                          ...styles.roleBadge,
+                          backgroundColor: member.role === "ADMIN" ? "rgba(212, 175, 55, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                          color: member.role === "ADMIN" ? "#e2b842" : "#888",
+                          borderColor: member.role === "ADMIN" ? "rgba(212, 175, 55, 0.3)" : "rgba(255, 255, 255, 0.08)",
+                        }}
+                      >
+                        {member.role === "ADMIN" ? "👑" : "👤"}
+                      </span>
                     </li>
                   );
                 })}
               </ul>
-            )}
-          </section>
+            </section>
+
+            <section style={styles.card} className="card-animated">
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>💸 Ausgaben & Schulden</h3>
+              </div>
+              
+              <div style={{ marginBottom: "1.75rem" }}>
+                <form onSubmit={handleCreateDebt} style={styles.debtForm}>
+                  <div style={styles.formHeaderTitle}>Neue Ausgabe eintragen</div>
+                  
+                  <div style={styles.formGrid}>
+                    <div style={styles.formRow}>
+                      <label style={styles.label}>Wer schuldet?</label>
+                      <select
+                        value={debtorId}
+                        onChange={(e) => setDebtorId(e.target.value)}
+                        style={styles.select}
+                        className="form-input"
+                      >
+                        <option value="">Wählen...</option>
+                        {group?.members?.map((m) => {
+                          const u = m.user || m.account || m;
+                          return (
+                            <option key={m.id || m.userId} value={m.userId || m.id}>
+                              {u.displayName || u.name || u.username}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div style={styles.formRow}>
+                      <label style={styles.label}>Wer bekommt?</label>
+                      <select
+                        value={creditorId}
+                        onChange={(e) => setCreditorId(e.target.value)}
+                        style={styles.select}
+                        className="form-input"
+                      >
+                        <option value="">Wählen...</option>
+                        {group?.members?.map((m) => {
+                          const u = m.user || m.account || m;
+                          return (
+                            <option key={m.id || m.userId} value={m.userId || m.id}>
+                              {u.displayName || u.name || u.username}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div style={styles.formRow}>
+                      <label style={styles.label}>Betrag (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="0.00"
+                        style={styles.input}
+                        className="form-input"
+                      />
+                    </div>
+
+                    <div style={styles.formRow}>
+                      <label style={styles.label}>Verwendungszweck</label>
+                      <input
+                        type="text"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="z. B. Einkaufen, Pizza"
+                        style={styles.input}
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={creating} style={styles.submitBtn} className="primary-btn">
+                    {creating ? "Speichere..." : "➕ Ausgabe buchen"}
+                  </button>
+                </form>
+              </div>
+
+              {(group?.debts || []).length === 0 ? (
+                <div style={styles.emptyState}>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎉</div>
+                  <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: "700", color: "#f3f4f6" }}>
+                    Alles bestens ausgeglichen!
+                  </p>
+                  <p style={{ color: "#71717a", fontSize: "0.85rem", marginTop: "0.3rem" }}>
+                    Keine offenen Posten in dieser Gruppe vorhanden.
+                  </p>
+                </div>
+              ) : (
+                <ul style={styles.debtList}>
+                  {group.debts.map((d) => {
+                    const amDebtor = d.debtorId === user?.id || d.debtorName === currentUserName;
+                    const amCreditor = d.creditorId === user?.id || d.creditorName === currentUserName;
+                    
+                    return (
+                      <li
+                        key={d.id}
+                        style={{
+                          ...styles.debtItem,
+                          flexDirection: isMobile ? "column" : "row",
+                          alignItems: isMobile ? "stretch" : "center",
+                        }}
+                        className="list-item"
+                      >
+                        <div style={styles.debtDetails}>
+                          <div style={styles.debtFlowText}>
+                            <span style={styles.memberNameHighlight}>{d.debtorName || "Unbekannt"}</span>
+                            <span style={styles.arrowIcon}>➔</span>
+                            <span style={styles.memberNameHighlight}>{d.creditorName || "Unbekannt"}</span>
+                          </div>
+                          <div style={styles.debtAmount}>
+                            {Number(d.amount).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+                          </div>
+                          {d.description && <div style={styles.debtDescription}>{d.description}</div>}
+                        </div>
+
+                        <div style={{ ...styles.debtActionGroup, justifyContent: isMobile ? "space-between" : "flex-end" }}>
+                          {(amDebtor || amCreditor) && (
+                            <div
+                              style={{
+                                ...styles.personalBadge,
+                                backgroundColor: amDebtor ? "rgba(239, 68, 68, 0.12)" : "rgba(34, 197, 94, 0.12)",
+                                color: amDebtor ? "#fca5a5" : "#86efac",
+                                borderColor: amDebtor ? "rgba(239, 68, 68, 0.25)" : "rgba(34, 197, 94, 0.25)",
+                              }}
+                            >
+                              {amDebtor ? "Du schuldest" : "Du kriegst"}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleDeleteDebt(d.id)}
+                            style={styles.settleBtn}
+                            className="settle-btn"
+                          >
+                            Begleichen
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
+        </main>
+      </div>
+
+      {selectedMemberIban !== null && (
+        <div style={styles.modalOverlay} onClick={() => setSelectedMemberIban(null)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, color: "#f3f4f6" }}>IBAN von {selectedMemberName}</h3>
+            <p style={{ 
+              backgroundColor: "rgba(255,255,255,0.05)", 
+              padding: "1rem", 
+              borderRadius: "8px", 
+              fontFamily: "monospace", 
+              wordBreak: "break-all",
+              color: "#e2b842"
+            }}>
+              {selectedMemberIban}
+            </p>
+            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedMemberIban);
+                  alert("IBAN in die Zwischenablage kopiert!");
+                }} 
+                style={{ ...styles.submitBtn, backgroundColor: "#22c55e" }}
+                className="primary-btn"
+              >
+                IBAN kopieren
+              </button>
+              <button 
+                onClick={() => setSelectedMemberIban(null)} 
+                style={styles.submitBtn}
+                className="primary-btn"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }
@@ -427,11 +526,6 @@ const keyframeStyles = `
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-  }
-
-  @keyframes goldGlow {
-    0%, 100% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.1); }
-    50% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.25); }
   }
 
   .card-animated {
@@ -524,27 +618,30 @@ const keyframeStyles = `
 `;
 
 export const styles = {
-  container: {
-    padding: "2rem 1rem",
-    color: "#f3f4f6",
+  wrapper: {
     backgroundColor: "#07080c",
-    backgroundImage: `
-      radial-gradient(at 0% 0%, rgba(212, 175, 55, 0.08) 0px, transparent 45%),
-      radial-gradient(at 100% 100%, rgba(212, 175, 55, 0.04) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(15, 17, 26, 0.5) 0px, transparent 100%)
-    `,
     minHeight: "100vh",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
+    width: "100%",
+  },
+  container: {
+    padding: "1.5rem 2rem",
+    color: "#07080c",
+    minHeight: "100vh",
+    maxWidth: "1280px",
+    margin: "0 auto",
     boxSizing: "border-box",
-    overflowX: "hidden",
+    backgroundColor: "transparent",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
   },
   loadingContainer: {
     minHeight: "100vh",
+    width: "100%",
     backgroundColor: "#07080c",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
+    boxSizing: "border-box",
   },
   spinnerOuter: {
     padding: "8px",
@@ -562,10 +659,10 @@ export const styles = {
   },
   header: {
     display: "flex",
-    justify: "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
-    maxWidth: "1140px",
-    margin: "0 auto 1.5rem auto",
+    width: "100%",
+    marginBottom: "1.5rem",
   },
   backBtn: {
     padding: "0.6rem 1.2rem",
@@ -589,8 +686,7 @@ export const styles = {
     fontWeight: "600",
   },
   mainContent: {
-    maxWidth: "1140px",
-    margin: "0 auto",
+    width: "100%",
   },
   heroCard: {
     backgroundColor: "rgba(17, 19, 26, 0.85)",
@@ -615,19 +711,24 @@ export const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "0.6rem",
+    minWidth: "0",
+    flex: "1",
   },
   badgeRow: {
     display: "flex",
     gap: "0.6rem",
     alignItems: "center",
+    flexWrap: "wrap",
   },
   groupTitle: {
     margin: 0,
     padding: "0.2rem 0",
-    fontSize: "clamp(1.8rem, 4vw, 2.75rem)",
+    fontSize: "clamp(1.4rem, 3.5vw, 2.75rem)",
     fontWeight: "900",
     letterSpacing: "-0.8px",
     lineHeight: "1.2",
+    wordBreak: "break-word",
+    overflowWrap: "break-word",
     background: "linear-gradient(135deg, #ffffff 20%, #f3e5ab 60%, #e2b842 100%)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
@@ -638,9 +739,14 @@ export const styles = {
     color: "#9ca3af",
     fontFamily: "'JetBrains Mono', monospace, sans-serif",
     backgroundColor: "rgba(255, 255, 255, 0.04)",
-    padding: "0.25rem 0.65rem",
+    padding: "0.35rem 0.65rem",
     borderRadius: "8px",
     border: "1px solid rgba(255, 255, 255, 0.08)",
+    maxWidth: "100%",
+    wordBreak: "break-all",
+    overflowWrap: "anywhere",
+    whiteSpace: "normal",
+    lineHeight: "1.4",
   },
   adminHeroBadge: {
     fontSize: "0.75rem",
@@ -650,6 +756,7 @@ export const styles = {
     borderRadius: "8px",
     border: "1px solid rgba(212, 175, 55, 0.3)",
     fontWeight: "700",
+    whiteSpace: "nowrap",
   },
   actionGroup: {
     display: "flex",
@@ -719,9 +826,11 @@ export const styles = {
   },
   gridContainer: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
     gap: "2rem",
     alignItems: "start",
+    width: "100%",
+    boxSizing: "border-box",
   },
   card: {
     backgroundColor: "rgba(17, 19, 26, 0.85)",
@@ -730,6 +839,9 @@ export const styles = {
     border: "1px solid rgba(255, 255, 255, 0.08)",
     padding: "1.75rem",
     boxShadow: "0 20px 40px rgba(0, 0, 0, 0.5)",
+    boxSizing: "border-box",
+    width: "100%",
+    overflow: "hidden",
   },
   cardHeader: {
     marginBottom: "1.5rem",
@@ -765,11 +877,14 @@ export const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     borderRadius: "14px",
+    gap: "1rem",
   },
   memberInfo: {
     display: "flex",
     alignItems: "center",
     gap: "0.9rem",
+    minWidth: "0",
+    flex: "1",
   },
   avatar: {
     width: "42px",
@@ -784,11 +899,15 @@ export const styles = {
     fontSize: "1.1rem",
     border: "1px solid rgba(212, 175, 55, 0.3)",
     boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+    flexShrink: "0",
   },
   memberName: {
     fontWeight: "700",
     fontSize: "0.95rem",
     color: "#f3f4f6",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   youBadge: {
     color: "#e2b842",
@@ -799,6 +918,9 @@ export const styles = {
     fontSize: "0.75rem",
     color: "#6b7280",
     marginTop: "0.1rem",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   roleBadge: {
     fontSize: "0.725rem",
@@ -806,6 +928,8 @@ export const styles = {
     borderRadius: "20px",
     fontWeight: "700",
     border: "1px solid",
+    whiteSpace: "nowrap",
+    flexShrink: "0",
   },
   emptyState: {
     padding: "3.5rem 1.5rem",
@@ -973,5 +1097,30 @@ export const styles = {
     display: "inline-flex",
     alignItems: "center",
     minWidth: "110px",
+  },
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backdropFilter: "blur(6px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+  },
+  modalContent: {
+    backgroundColor: "#11131a",
+    border: "1px solid rgba(212, 175, 55, 0.3)",
+    borderRadius: "20px",
+    padding: "2rem",
+    width: "90%",
+    maxWidth: "400px",
+    boxShadow: "0 25px 50px rgba(0, 0, 0, 0.8)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
   },
 };
